@@ -162,7 +162,7 @@ struct fanotify_event_info *fanotify_alloc_event(struct fsnotify_group *group,
 	{
 		struct mem_cgroup *old_memcg;
 		/* Whoever is interested in the event, pays for the allocation. */
-	struct mem_cgroup *old_memcg = set_active_memcg(group->memcg);
+	old_memcg = set_active_memcg(group->memcg);
 
 	if (fanotify_is_perm_event(mask)) {
 		struct fanotify_perm_event_info *pevent;
