@@ -1,0 +1,64 @@
+name: Build Halium Kernel (SM-A217F)
+
+on:
+  push:
+    branches: [ "lineage-24.0" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Kernel Source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install Build Dependencies & Halium Config Checker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache curl flex git libssl-dev libelf-dev python3 python2 dwarves device-tree-compiler lz4 xz-utils
+          git clone --depth=1 https://github.com /tmp/halium-boot
+
+      - name: Download Android Clang & GCC Toolchains
+        run: |
+          mkdir -p /tmp/toolchains/clang /tmp/toolchains/gcc64 /tmp/toolchains/gcc32
+          curl -L https://googlesource.com | tar -xz -C /tmp/toolchains/clang
+          curl -L https://googlesource.com | tar -xz -C /tmp/toolchains/gcc64
+          curl -L https://googlesource.com | tar -xz -C /tmp/toolchains/gcc32
+
+      - name: Merge Defconfig & Verify Halium Config
+        run: |
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export PATH="/tmp/toolchains/clang/bin:/tmp/toolchains/gcc64/bin:/tmp/toolchains/gcc32/bin:$PATH"
+          make O=out ARCH=arm64 exynos850-a21snsxx_defconfig
+          ./scripts/kconfig/merge_config.sh -m -O out out/.config arch/arm64/configs/halium.config
+          make O=out ARCH=arm64 olddefconfig
+          /tmp/halium-boot/check-kernel-config out/.config -w || true
+
+      - name: Compile Kernel Image & DTBO
+        run: |
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export PATH="/tmp/toolchains/clang/bin:/tmp/toolchains/gcc64/bin:/tmp/toolchains/gcc32/bin:$PATH"
+          make -j$(nproc) O=out ARCH=arm64 \
+            CC=clang \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-android- \
+            CROSS_COMPILE_ARM32=arm-linux-androideabi- \
+            Image dtbo.img
+
+      - name: Collect Build Artifacts
+        run: |
+          mkdir -p artifacts
+          cp out/arch/arm64/boot/Image artifacts/
+          cp out/arch/arm64/boot/dtbo.img artifacts/ || true
+          find out/arch/arm64/boot/dts -name "*.dtb" -exec cp {} artifacts/ \;
+          cp out/.config artifacts/merged_config
+
+      - name: Upload Kernel Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: halium-kernel-a21s
+          path: artifacts/
