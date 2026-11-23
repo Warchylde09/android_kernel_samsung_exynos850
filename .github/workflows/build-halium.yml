@@ -17,8 +17,9 @@ jobs:
       - name: Install Build Dependencies & Halium Config Checker
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison build-essential ccache curl flex git libssl-dev libelf-dev python3 python2 dwarves device-tree-compiler lz4 xz-utils
-          git clone --depth=1 https://github.com /tmp/halium-boot
+          sudo apt-get install -y bc bison build-essential ccache curl flex git libssl-dev libelf-dev python3 dwarves device-tree-compiler lz4 xz-utils
+          curl -fsSL https://githubusercontent.com -o /tmp/check-kernel-config
+          chmod +x /tmp/check-kernel-config
 
       - name: Download Android Clang & GCC Toolchains
         run: |
@@ -35,7 +36,7 @@ jobs:
           make O=out ARCH=arm64 exynos850-a21snsxx_defconfig
           ./scripts/kconfig/merge_config.sh -m -O out out/.config arch/arm64/configs/halium.config
           make O=out ARCH=arm64 olddefconfig
-          /tmp/halium-boot/check-kernel-config out/.config -w || true
+          /tmp/check-kernel-config out/.config -w || true
 
       - name: Compile Kernel Image & DTBO
         run: |
