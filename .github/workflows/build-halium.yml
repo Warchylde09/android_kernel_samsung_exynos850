@@ -14,19 +14,18 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Install Build Dependencies & Halium Config Checker
+      - name: Install Build Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y bc bison build-essential ccache curl flex git libssl-dev libelf-dev python3 dwarves device-tree-compiler lz4 xz-utils
-          curl -fsSL https://githubusercontent.com -o /tmp/check-kernel-config
-          chmod +x /tmp/check-kernel-config
 
       - name: Download Android Clang & GCC Toolchains
         run: |
           mkdir -p /tmp/toolchains/clang /tmp/toolchains/gcc64 /tmp/toolchains/gcc32
-          curl -L https://googlesource.com | tar -xz -C /tmp/toolchains/clang
-          curl -L https://googlesource.com | tar -xz -C /tmp/toolchains/gcc64
-          curl -L https://googlesource.com | tar -xz -C /tmp/toolchains/gcc32
+          GH="https://github.com"
+          git clone --depth=1 "$GH/crdroidandroid/android_prebuilts_clang_host_linux-x86_clang-r416183b" /tmp/toolchains/clang
+          git clone --depth=1 -b lineage-19.1 "$GH/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9" /tmp/toolchains/gcc64
+          git clone --depth=1 -b lineage-19.1 "$GH/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9" /tmp/toolchains/gcc32
 
       - name: Merge Defconfig & Verify Halium Config
         run: |
@@ -36,7 +35,7 @@ jobs:
           make O=out ARCH=arm64 exynos850-a21snsxx_defconfig
           ./scripts/kconfig/merge_config.sh -m -O out out/.config arch/arm64/configs/halium.config
           make O=out ARCH=arm64 olddefconfig
-          /tmp/check-kernel-config out/.config -w || true
+          grep -E "CONFIG_NAMESPACES|CONFIG_USER_NS|CONFIG_CGROUPS|CONFIG_SECURITY_APPARMOR|CONFIG_USB_CONFIGFS_RNDIS|CONFIG_BLK_DEV_LOOP" out/.config
 
       - name: Compile Kernel Image & DTBO
         run: |
