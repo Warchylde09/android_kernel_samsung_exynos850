@@ -52,7 +52,7 @@ jobs:
       - name: Collect Build Artifacts
         run: |
           mkdir -p artifacts
-          cp out/arch/arm64/boot/Image artifacts/
+          ls -lh out/arch/arm64/boot/Image && cp out/arch/arm64/boot/Image artifacts/
           cp out/arch/arm64/boot/dtbo.img artifacts/ || true
           find out/arch/arm64/boot/dts -name "*.dtb" -exec cp {} artifacts/ \;
           cp out/.config artifacts/merged_config
